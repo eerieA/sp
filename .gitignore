@@ -1,0 +1,42 @@
+# Binaries, intermediate build files, and cache
+Binaries/
+Intermediate/
+DerivedDataCache/
+Saved/
+*.opensdf
+*.sdf
+*.suo
+*.xcodeproj
+*.xcworkspace
+*.xcuserdata/
+*.pdb
+*.idb
+*.sln.docstates
+
+# Mac-specific
+.DS_Store
+
+# Windows thumbnails, logs, temporary files, IDE files
+Thumbs.db
+*.log
+*.vs/
+*.vscode/
+*.idea/
+
+# Backup files
+Backup/
+
+# Ignore compiled assets, cooked content, editor collections or debug assets
+Content/Developers/
+*.uasset
+# *.umap
+
+# Ignore Android and per-user configs
+Config/Android*
+Config/*PerUser*.ini
+
+# Ignore auto-generated project files
+.vs/
+*.VC.db
+*.VC.opendb
+*.VC.opendb.*
