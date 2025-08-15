@@ -1,0 +1,240 @@
+{
+    "start": {
+        "ID": "start",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "Mom made me come. I’m fine.",
+        "AltLines": [
+            {"Condition": "trust <= -1", "Text": "Can we be done? I said I’m fine."}
+        ],
+        "AppendLines": [],
+        "Choices": [
+            {
+                "Text": "Sometimes ‘fine’ means something else.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"},
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "empathic_open"}
+                ],
+                "NextNodeID": "luka_intro_open",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "Your mom mentioned you’ve been hearing voices.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "symptom_label"}
+                ],
+                "NextNodeID": "luka_direct_intro",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "We can just talk about whatever you like.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"},
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "autonomy"}
+                ],
+                "NextNodeID": "luka_intro_open",
+                "FailureNodeID": ""
+            }
+        ],
+        "NextNodeID": ""
+    },
+    "luka_intro_open": {
+        "ID": "luka_intro_open",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "They’re not voices. More like warnings something bad will happen.",
+        "AltLines": [
+            {"Condition": "last_topic == \"autonomy\" && trust >= 1", "Text": "Okay… thanks. Not voices. Warnings. Like… a feeling something bad will happen."},
+            {"Condition": "last_topic == \"empathic_open\"", "Text": "Not voices. Warnings. Like… a feeling something bad will happen."}
+        ],
+        "AppendLines": [],
+        "Choices": [],
+        "NextNodeID": "luka_problem_entry"
+    },
+    "luka_direct_intro": {
+        "ID": "luka_direct_intro",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "They’re not voices like you think. They’re… warnings.",
+        "AltLines": [
+            {"Condition": "trust >= 1", "Text": "They’re not voices like you think. They’re… warnings. I notice patterns."},
+            {"Condition": "trust <= -1", "Text": "You’re not listening. I said they’re warnings."}
+        ],
+        "AppendLines": [],
+        "Choices": [],
+        "NextNodeID": "luka_problem_entry"
+    },
+    "luka_problem_entry": {
+        "ID": "luka_problem_entry",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "School’s been crap. I skip class. People stare.",
+        "AltLines": [],
+        "AppendLines": [
+            {"Condition": "skill.observation >= 1", "Text": "You notice fingernail picking and trembling hands."},
+            {"Condition": "trust <= -1", "Text": "Whatever. You’ll tell me to ‘cope’, right?"}
+        ],
+        "Choices": [
+            {
+                "Text": "What’s been the hardest part about school lately?",
+                "AltTexts": [
+                    {"Condition": "trust >= 2", "Text": "What’s been the hardest part day-to-day at school?"}
+                ],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "bullying"}
+                ],
+                "NextNodeID": "luka_bullying",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "When did the warnings start?",
+                "AltTexts": [
+                    {"Condition": "last_topic == \"symptom_label\" && trust >= 1", "Text": "When did those warning feelings first show up?"}
+                ],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "timing"}
+                ],
+                "NextNodeID": "luka_warning_timing",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "Mind if we ground for a sec? Try unclenching your hands with me.",
+                "AltTexts": [],
+                "Requirements": ["trust >= 2", "skill.observation >= 1"],
+                "Effects": [
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"},
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "regulation"}
+                ],
+                "NextNodeID": "luka_bullying",
+                "FailureNodeID": ""
+            }
+        ],
+        "NextNodeID": ""
+    },
+    "luka_bullying": {
+        "ID": "luka_bullying",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "They push me, take my stuff. Teachers don’t care.",
+        "AltLines": [
+            {"Condition": "last_topic == \"regulation\"", "Text": "They push me, take my stuff… It’s a little easier to talk now."},
+            {"Condition": "trust >= 2", "Text": "They push me, take my stuff. I stopped telling teachers because it made it worse."}
+        ],
+        "AppendLines": [],
+        "Choices": [],
+        "NextNodeID": "luka_clue_intro"
+    },
+    "luka_warning_timing": {
+        "ID": "luka_warning_timing",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "A few weeks ago. Right before… that woman died.",
+        "AltLines": [
+            {"Condition": "trust >= 2", "Text": "A few weeks ago. Right before… that woman died. It felt the same kind of ‘bad pattern’ as before."}
+        ],
+        "AppendLines": [],
+        "Choices": [],
+        "NextNodeID": "luka_clue_intro"
+    },
+    "luka_clue_intro": {
+        "ID": "luka_clue_intro",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "I saw them. The killer. They hide in plain sight.",
+        "AltLines": [
+            {"Condition": "last_topic == \"bullying\" && trust >= 1", "Text": "I saw them. The killer. They hide in plain sight—like the bullies do."}
+        ],
+        "AppendLines": [],
+        "Choices": [
+            {
+                "Text": "Where did you see them?",
+                "AltTexts": [],
+                "Requirements": ["skill.rapport >= 2"],
+                "Effects": [],
+                "NextNodeID": "luka_clue_location",
+                "FailureNodeID": "luka_wrapup"
+            },
+            {
+                "Text": "We don’t know for sure it was the killer.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "trust", "Operation": "Add", "Value": "-1"},
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "invalidate"}
+                ],
+                "NextNodeID": "luka_wrapup",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "If you see them again, what could you do to stay safe?",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"},
+                    {"Attribute": "last_topic", "Operation": "Set", "Value": "safety_plan"}
+                ],
+                "NextNodeID": "luka_wrapup",
+                "FailureNodeID": ""
+            }
+        ],
+        "NextNodeID": ""
+    },
+    "luka_clue_location": {
+        "ID": "luka_clue_location",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "Maintenance door under the old cinema. They went inside.",
+        "AltLines": [
+            {"Condition": "trust >= 2", "Text": "Maintenance door under the old cinema. They went inside. I can draw the layout."}
+        ],
+        "AppendLines": [],
+        "Choices": [
+            {
+                "Text": "(no choice, just flag setting)",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "Clue_Cinema_MainDoor", "Operation": "Set", "Value": "true"}
+                ],
+                "NextNodeID": "",
+                "FailureNodeID": ""
+            }
+        ],
+        "NextNodeID": "luka_wrapup"
+    },
+    "luka_wrapup": {
+        "ID": "luka_wrapup",
+        "Speaker": "Luka Petrovic",
+        "BaseLine": "Guess I can write stuff down. But I’m not crazy.",
+        "AltLines": [
+            {"Condition": "last_topic == \"invalidate\" && trust <= 0", "Text": "Guess I’ll write stuff down if it gets you off my back. But I’m not crazy."},
+            {"Condition": "last_topic == \"safety_plan\" && trust >= 2", "Text": "I can write stuff down and map exits. I’m not crazy—I’m being careful."}
+        ],
+        "AppendLines": [],
+        "Choices": [
+            {
+                "Text": "Symptom diary could help us both see patterns.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "Goal_SymptomDiary", "Operation": "Set", "Value": "true"},
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"}
+                ],
+                "NextNodeID": "",
+                "FailureNodeID": ""
+            },
+            {
+                "Text": "We’ll focus on keeping you safe first.",
+                "AltTexts": [],
+                "Requirements": [],
+                "Effects": [
+                    {"Attribute": "Goal_SafetyFocus", "Operation": "Set", "Value": "true"},
+                    {"Attribute": "trust", "Operation": "Add", "Value": "1"}
+                ],
+                "NextNodeID": "",
+                "FailureNodeID": ""
+            }
+        ],
+        "NextNodeID": ""
+    }
+}

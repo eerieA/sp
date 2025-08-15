@@ -1,16 +1,18 @@
 #include "DialogueManager.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include "DialogueDataLoader.h"
 
 UDialogueManager::UDialogueManager()
 {
     PrimaryComponentTick.bCanEverTick = false;
-    DialogueDataTable = nullptr;
 }
 
 void UDialogueManager::BeginPlay()
 {
     Super::BeginPlay();
+    
+    LoadDialogueFromJSON("Dialogues/luka_session_01.json");
 }
 
 void UDialogueManager::StartDialogue(const FString& NodeID)
@@ -35,10 +37,7 @@ void UDialogueManager::StartDialogue(const FString& NodeID)
 
 FString UDialogueManager::GetCurrentLine() const
 {
-    if (!DialogueDataTable)
-        return FString("No DataTable set!");
-
-    const FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetCurrentLine"));
+    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);    
     if (!Node)
         return FString("Node not found!");
 
@@ -88,9 +87,8 @@ FString UDialogueManager::GetCurrentLine() const
 TArray<FDialogueChoice> UDialogueManager::GetAvailableChoices() const
 {
     TArray<FDialogueChoice> Result;
-    if (!DialogueDataTable) return Result;
 
-    const FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetAvailableChoices"));
+    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
     if (!Node) return Result;
 
     for (const FDialogueChoice& Choice : Node->Choices)
@@ -149,6 +147,14 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
         // No next node - end of dialogue
         if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Cyan, TEXT("Dialogue end."));
     }
+}
+
+bool UDialogueManager::LoadDialogueFromJSON(const FString& RelativePath)
+{
+    UDialogueDataLoader* Loader = NewObject<UDialogueDataLoader>(this);
+    if (!Loader) return false;
+
+    return Loader->LoadDialogueFromFile(RelativePath, DialogueNodeMap);
 }
 
 bool UDialogueManager::EvaluateConditionString(const FString& Condition) const

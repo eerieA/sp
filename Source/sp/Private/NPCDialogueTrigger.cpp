@@ -1,5 +1,3 @@
-// NPCDialogueTrigger.cpp
-
 #include "NPCDialogueTrigger.h"
 
 #include "DialogueManager.h"
@@ -78,6 +76,6 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
         return;
     }
 
-    // Start dialogue (use the node id you want)
+    // Start dialogue (use the node id defined in the json we want to use)
     DM->StartDialogue(TEXT("start"));
 }

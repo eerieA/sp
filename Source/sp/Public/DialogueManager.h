@@ -18,9 +18,9 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    // DataTable with rows of FDialogueNode
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
-    UDataTable* DialogueDataTable;
+    // Holds all loaded nodes by ID in memory
+    UPROPERTY(BlueprintReadOnly, Category="Dialogue")
+    TMap<FString, FDialogueNode> DialogueNodeMap;
 
     // Current node id
     UPROPERTY(BlueprintReadOnly, Category="Dialogue")
@@ -56,6 +56,9 @@ public:
     // Select a choice index (applies effects and advances)
     UFUNCTION(BlueprintCallable, Category="Dialogue")
     void SelectChoice(int32 ChoiceIndex);
+
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
+    bool LoadDialogueFromJSON(const FString& RelativePath);
 
 protected:
     // Evaluate a full condition string. Supports "||" and "&&" (basic).
