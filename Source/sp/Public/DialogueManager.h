@@ -3,47 +3,73 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Engine/DataTable.h"
-#include "DialogueNode.h" // FDialogueNode struct
+#include "DialogueNode.h"   // All structs related to a dialogue node
 #include "DialogueManager.generated.h"
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SP_API UDialogueManager : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
-public:    
-	UDialogueManager();
+public:
+    UDialogueManager();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
 
-public:    
-	// DataTable reference
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
-	UDataTable* DialogueDataTable;
+public:
+    // DataTable with rows of FDialogueNode
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
+    UDataTable* DialogueDataTable;
 
-	// Current node ID
-	FString CurrentNodeID;
+    // Current node id
+    UPROPERTY(BlueprintReadOnly, Category="Dialogue")
+    FString CurrentNodeID;
 
-	// Simple player state
-	UPROPERTY(BlueprintReadWrite, Category = "Dialogue")
-	int32 Trust = 0;
-	UPROPERTY(BlueprintReadWrite, Category = "Dialogue")
-	FString LastTopic;
+    // Simple state
+    UPROPERTY(BlueprintReadWrite, Category="Dialogue")
+    int32 Trust = 0;
 
-	// Start a dialogue at a node
-	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void StartDialogue(const FString& NodeID);
+    UPROPERTY(BlueprintReadWrite, Category="Dialogue")
+    FString LastTopic;
 
-	// Get the current line (evaluates alt lines)
-	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	FString GetCurrentLine() const;
+    // Skills map (e.g., skill.observation -> int)
+    UPROPERTY(BlueprintReadWrite, Category="Dialogue")
+    TMap<FString,int32> Skills;
 
-	// List available choices (ignores complex requirements for now)
-	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	TArray<FDialogueChoice> GetAvailableChoices() const;
+    // Flags map
+    UPROPERTY(BlueprintReadWrite, Category="Dialogue")
+    TMap<FString,bool> Flags;
 
-	// Select a choice
-	UFUNCTION(BlueprintCallable, Category = "Dialogue")
-	void SelectChoice(int32 ChoiceIndex);
+    // Start dialogue at node
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
+    void StartDialogue(const FString& NodeID);
+
+    // Get display line (resolves alt + append)
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
+    FString GetCurrentLine() const;
+
+    // Get list of choices (with resolved text and only unlocked)
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
+    TArray<FDialogueChoice> GetAvailableChoices() const;
+
+    // Select a choice index (applies effects and advances)
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
+    void SelectChoice(int32 ChoiceIndex);
+
+protected:
+    // Evaluate a full condition string. Supports "||" and "&&" (basic).
+    bool EvaluateConditionString(const FString& Condition) const;
+
+    // Evaluate a single expression like 'trust >= 1' or 'last_topic == "autonomy"'
+    bool EvaluateSingleExpression(const FString& Expr) const;
+
+    // Apply effects from a choice
+    void ApplyEffects(const TArray<FDialogueEffect>& Effects);
+
+    // Helper: split by substring (works with multi-char separators)
+    void SplitBySubstring(const FString& Input, const FString& Separator, TArray<FString>& Out) const;
+
+    // Helper: trim
+    FString Trim(const FString& In) const;
 };

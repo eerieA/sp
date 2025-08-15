@@ -1,11 +1,11 @@
 #include "DialogueManager.h"
-#include "DialogueNode.h"
 #include "Engine/Engine.h"
+#include "Kismet/GameplayStatics.h"
 
 UDialogueManager::UDialogueManager()
-    : DialogueDataTable(nullptr) // explicit initialization
 {
     PrimaryComponentTick.bCanEverTick = false;
+    DialogueDataTable = nullptr;
 }
 
 void UDialogueManager::BeginPlay()
@@ -18,50 +18,114 @@ void UDialogueManager::StartDialogue(const FString& NodeID)
     CurrentNodeID = NodeID;
 
     FString Line = GetCurrentLine();
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%s"), *Line));
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 6.f, FColor::Green, Line);
+    }
 
     TArray<FDialogueChoice> Choices = GetAvailableChoices();
-    for(int i = 0; i < Choices.Num(); ++i)
+    for (int32 i = 0; i < Choices.Num(); ++i)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, FString::Printf(TEXT("%d: %s"), i, *Choices[i].Text));
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 6.f, FColor::Yellow, FString::Printf(TEXT("%d: %s"), i, *Choices[i].Text));
+        }
     }
 }
 
 FString UDialogueManager::GetCurrentLine() const
 {
-    if (!DialogueDataTable) return FString("No DataTable set!");
+    if (!DialogueDataTable)
+        return FString("No DataTable set!");
 
-    FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetCurrentLine"));
-    if (!Node) return FString("Node not found!");
+    const FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetCurrentLine"));
+    if (!Node)
+        return FString("Node not found!");
 
-    for (const FDialogueAltLine& AltLine : Node->AltLineConditions)
+    // Check alt lines (replacement)
+    for (const FDialogueAltLine& Alt : Node->AltLines)
     {
-        for (const FDialogueCondition& Cond : AltLine.Conditions)
+        if (Alt.Condition.IsEmpty())
+            continue;
+
+        if (EvaluateConditionString(Alt.Condition))
         {
-            // Example: check "trust <= -1"
-            if (Cond.Attribute == "trust" && Cond.Comparator == "<=")
+            // Found a replacement alt line
+            FString Result = Alt.Text;
+
+            // Append any append lines that match
+            for (const FDialogueAltLine& App : Node->AppendLines)
             {
-                int32 Value = FCString::Atoi(*Cond.Value);
-                if (Trust <= Value)
+                if (App.Condition.IsEmpty())
+                    continue;
+                if (EvaluateConditionString(App.Condition))
                 {
-                    return AltLine.Text; // Use the line text from AltLine
+                    Result += " ";
+                    Result += App.Text;
                 }
             }
 
-            // Will add other attribute checks (last_topic, skills, etc.)
+            return Result;
         }
     }
 
-    return Node->BaseLine;
+    // No replacement found; use BaseLine and append appendLines that match
+    FString Base = Node->BaseLine;
+    for (const FDialogueAltLine& App : Node->AppendLines)
+    {
+        if (App.Condition.IsEmpty())
+            continue;
+        if (EvaluateConditionString(App.Condition))
+        {
+            Base += " ";
+            Base += App.Text;
+        }
+    }
+
+    return Base;
 }
 
 TArray<FDialogueChoice> UDialogueManager::GetAvailableChoices() const
 {
-    if (!DialogueDataTable) return {};
-    FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetAvailableChoices"));
-    if (!Node) return {};
-    
-    return Node->Choices; // for now, ignoring requirement checks
+    TArray<FDialogueChoice> Result;
+    if (!DialogueDataTable) return Result;
+
+    const FDialogueNode* Node = DialogueDataTable->FindRow<FDialogueNode>(*CurrentNodeID, TEXT("GetAvailableChoices"));
+    if (!Node) return Result;
+
+    for (const FDialogueChoice& Choice : Node->Choices)
+    {
+        // Check requirements (all must pass). Empty requirements => unlocked.
+        bool bUnlocked = true;
+        for (const FString& Req : Choice.Requirements)
+        {
+            if (!Req.IsEmpty() && !EvaluateConditionString(Req))
+            {
+                bUnlocked = false;
+                break;
+            }
+        }
+
+        // If not unlocked, we skip adding it to available list (alternatively you could add disabled entries)
+        if (!bUnlocked) continue;
+
+        // Resolve alt text for choice
+        FString FinalText = Choice.Text;
+        for (const FDialogueAltText& AltText : Choice.AltTexts)
+        {
+            if (!AltText.Condition.IsEmpty() && EvaluateConditionString(AltText.Condition))
+            {
+                FinalText = AltText.Text;
+                break;
+            }
+        }
+
+        FDialogueChoice Resolved = Choice;
+        Resolved.Text = FinalText;
+        Result.Add(Resolved);
+    }
+
+    return Result;
 }
 
 void UDialogueManager::SelectChoice(int32 ChoiceIndex)
@@ -71,23 +135,265 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
 
     const FDialogueChoice& Choice = Choices[ChoiceIndex];
 
-    // Apply effects (very simple: trust +1 if attribute is "trust")
-    for (const FDialogueEffect& Effect : Choice.Effects)
+    // Apply effects
+    ApplyEffects(Choice.Effects);
+
+    // Advance to next node
+    if (!Choice.NextNodeID.IsEmpty())
     {
-        if (Effect.Attribute == "trust")
+        CurrentNodeID = Choice.NextNodeID;
+        StartDialogue(CurrentNodeID);
+    }
+    else
+    {
+        // No next node - end of dialogue
+        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Cyan, TEXT("Dialogue end."));
+    }
+}
+
+bool UDialogueManager::EvaluateConditionString(const FString& Condition) const
+{
+    if (Condition.IsEmpty()) return false;
+
+    // Handle OR groups split by "||"
+    TArray<FString> OrParts;
+    SplitBySubstring(Condition, TEXT("||"), OrParts);
+
+    for (const FString& OrPartRaw : OrParts)
+    {
+        // Each OrPart may contain && clauses
+        TArray<FString> AndParts;
+        SplitBySubstring(OrPartRaw, TEXT("&&"), AndParts);
+
+        bool bAndAllTrue = true;
+        for (FString AndPart : AndParts)
         {
-            if (Effect.bSetDirectly)
-                Trust = Effect.ChangeValue;
-            else
-                Trust += Effect.ChangeValue;
+            FString Expr = Trim(AndPart);
+            if (Expr.IsEmpty()) continue;
+            if (!EvaluateSingleExpression(Expr))
+            {
+                bAndAllTrue = false;
+                break;
+            }
         }
-        if (Effect.Attribute == "last_topic")
+
+        if (bAndAllTrue)
         {
-            LastTopic = FString::FromInt(Effect.ChangeValue); // adapt as needed
+            // One OR branch succeeded
+            return true;
         }
     }
 
-    // Advance to next node
-    CurrentNodeID = Choice.NextNodeID;
-    StartDialogue(CurrentNodeID);
+    // No OR branch succeeded
+    return false;
+}
+
+bool UDialogueManager::EvaluateSingleExpression(const FString& Expr) const
+{
+    // Find comparator
+    static const TArray<FString> Comparators = { TEXT("=="), TEXT("!="), TEXT(">="), TEXT("<="), TEXT(">"), TEXT("<") };
+
+    int32 FoundPos = INDEX_NONE;
+    FString FoundComp;
+
+    for (const FString& Comp : Comparators)
+    {
+        int32 Pos = Expr.Find(Comp, ESearchCase::IgnoreCase, ESearchDir::FromStart);
+        if (Pos != INDEX_NONE)
+        {
+            FoundPos = Pos;
+            FoundComp = Comp;
+            break;
+        }
+    }
+
+    if (FoundPos == INDEX_NONE)
+    {
+        // If no comparator found, treat as boolean/flag check (e.g., "FlagName" or "flag == true")
+        FString Key = Trim(Expr);
+        bool bVal = false;
+        const bool* FoundFlag = Flags.Find(Key);
+        if (FoundFlag) return *FoundFlag;
+        // also check equality to string 'true'
+        if (Key.Equals(TEXT("true"), ESearchCase::IgnoreCase)) return true;
+        if (Key.Equals(TEXT("false"), ESearchCase::IgnoreCase)) return false;
+        return false;
+    }
+
+    FString Left = Trim(Expr.Left(FoundPos));
+    FString Right = Trim(Expr.Mid(FoundPos + FoundComp.Len()));
+
+    // Remove surrounding quotes on Right if present
+    if (Right.StartsWith("\"") && Right.EndsWith("\"") && Right.Len() >= 2)
+    {
+        Right = Right.Mid(1, Right.Len() - 2);
+    }
+
+    // Handle left attribute cases
+    // trust (int)
+    if (Left.Equals(TEXT("trust"), ESearchCase::IgnoreCase))
+    {
+        int32 RightInt = FCString::Atoi(*Right);
+        if (FoundComp == "==") return Trust == RightInt;
+        if (FoundComp == "!=") return Trust != RightInt;
+        if (FoundComp == ">=") return Trust >= RightInt;
+        if (FoundComp == "<=") return Trust <= RightInt;
+        if (FoundComp == ">") return Trust > RightInt;
+        if (FoundComp == "<") return Trust < RightInt;
+        return false;
+    }
+
+    // last_topic (string)
+    if (Left.Equals(TEXT("last_topic"), ESearchCase::IgnoreCase))
+    {
+        if (FoundComp == "==") return LastTopic == Right;
+        if (FoundComp == "!=") return LastTopic != Right;
+        // numeric comparisons for strings not supported
+        return false;
+    }
+
+    // skill.<name>
+    if (Left.StartsWith(TEXT("skill."), ESearchCase::IgnoreCase))
+    {
+        FString SkillName = Left.RightChop(6); // remove "skill."
+        const int32* Found = Skills.Find(SkillName);
+        int32 SkillValue = Found ? *Found : 0;
+        int32 RightInt = FCString::Atoi(*Right);
+        if (FoundComp == "==") return SkillValue == RightInt;
+        if (FoundComp == "!=") return SkillValue != RightInt;
+        if (FoundComp == ">=") return SkillValue >= RightInt;
+        if (FoundComp == "<=") return SkillValue <= RightInt;
+        if (FoundComp == ">") return SkillValue > RightInt;
+        if (FoundComp == "<") return SkillValue < RightInt;
+        return false;
+    }
+
+    // flags (boolean)
+    {
+        const bool* Found = Flags.Find(Left);
+        if (Found)
+        {
+            bool RightBool = Right.Equals(TEXT("true"), ESearchCase::IgnoreCase);
+            if (FoundComp == "==") return *Found == RightBool;
+            if (FoundComp == "!=") return *Found != RightBool;
+        }
+    }
+
+    // fallback: try compare as integers (Left may be an int attr you add later)
+    int32 LeftVal = 0;
+    const int32* Lfound = nullptr;
+    // no general int map in header, so fallback false
+    return false;
+}
+
+void UDialogueManager::ApplyEffects(const TArray<FDialogueEffect>& Effects)
+{
+    for (const FDialogueEffect& Eff : Effects)
+    {
+        if (Eff.Attribute.Equals(TEXT("trust"), ESearchCase::IgnoreCase))
+        {
+            if (Eff.Operation == EDialogueEffectOp::Add)
+            {
+                int32 Delta = FCString::Atoi(*Eff.Value);
+                Trust += Delta;
+            }
+            else if (Eff.Operation == EDialogueEffectOp::Set)
+            {
+                Trust = FCString::Atoi(*Eff.Value);
+            }
+        }
+        else if (Eff.Attribute.Equals(TEXT("last_topic"), ESearchCase::IgnoreCase))
+        {
+            if (Eff.Operation == EDialogueEffectOp::Set)
+            {
+                LastTopic = Eff.Value;
+            }
+            else if (Eff.Operation == EDialogueEffectOp::Add)
+            {
+                // treat Add on strings as Set
+                LastTopic = Eff.Value;
+            }
+        }
+        else
+        {
+            // Generic attribute handling:
+            // If it's a flag, treat Set/Toggle
+            if (Eff.Operation == EDialogueEffectOp::Toggle)
+            {
+                bool* Found = Flags.Find(Eff.Attribute);
+                if (Found)
+                {
+                    *Found = !(*Found);
+                }
+                else
+                {
+                    Flags.Add(Eff.Attribute, true);
+                }
+            }
+            else if (Eff.Operation == EDialogueEffectOp::Set)
+            {
+                // try boolean value
+                if (Eff.Value.Equals(TEXT("true"), ESearchCase::IgnoreCase) || Eff.Value.Equals(TEXT("false"), ESearchCase::IgnoreCase))
+                {
+                    Flags.Add(Eff.Attribute, Eff.Value.Equals(TEXT("true"), ESearchCase::IgnoreCase));
+                }
+                else
+                {
+                    // assume string attribute - for now only last_topic uses string; you can expand with a map
+                }
+            }
+            else if (Eff.Operation == EDialogueEffectOp::Add)
+            {
+                // support skill increments (e.g., skill.observation)
+                if (Eff.Attribute.StartsWith(TEXT("skill."), ESearchCase::IgnoreCase))
+                {
+                    FString SkillName = Eff.Attribute.RightChop(6);
+                    int32 Delta = FCString::Atoi(*Eff.Value);
+                    int32& ValRef = Skills.FindOrAdd(SkillName);
+                    ValRef += Delta;
+                }
+            }
+        }
+    }
+}
+
+void UDialogueManager::SplitBySubstring(const FString& Input, const FString& Separator, TArray<FString>& Out) const
+{
+    Out.Empty();
+
+    if (Separator.IsEmpty())
+    {
+        Out.Add(Input);
+        return;
+    }
+
+    int32 Start = 0;
+    while (true)
+    {
+        int32 Found = Input.Find(Separator, ESearchCase::IgnoreCase, ESearchDir::FromStart, Start);
+        if (Found == INDEX_NONE)
+        {
+            Out.Add(Input.Mid(Start));
+            break;
+        }
+
+        Out.Add(Input.Mid(Start, Found - Start));
+        Start = Found + Separator.Len();
+        if (Start >= Input.Len())
+        {
+            Out.Add(TEXT(""));
+            break;
+        }
+    }
+
+    // Trim each part
+    for (FString& S : Out) S = Trim(S);
+}
+
+FString UDialogueManager::Trim(const FString& In) const
+{
+    FString Out = In;
+    Out.TrimStartInline();
+    Out.TrimEndInline();
+    return Out;
 }
