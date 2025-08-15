@@ -33,6 +33,10 @@ public:
     UPROPERTY(BlueprintReadWrite, Category="Dialogue")
     FString LastTopic;
 
+    // Relative path to JSON, e.g., "Dialogues/sample_dlg.json"
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
+    FString DialogueJSONPath = TEXT("Dialogues/change_me.json");;
+
     // Skills map (e.g., skill.observation -> int)
     UPROPERTY(BlueprintReadWrite, Category="Dialogue")
     TMap<FString,int32> Skills;

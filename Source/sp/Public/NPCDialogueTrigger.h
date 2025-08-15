@@ -28,6 +28,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger")
 	UBoxComponent* TriggerBox;
 
+	// Dialogue node ID to start with when player overlaps
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
+	FString StartingNodeID = TEXT("start");  // default value
+
 	// Overlap logic functions
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

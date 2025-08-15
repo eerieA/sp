@@ -77,5 +77,5 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
     }
 
     // Start dialogue (use the node id defined in the json we want to use)
-    DM->StartDialogue(TEXT("start"));
+    DM->StartDialogue(StartingNodeID);
 }

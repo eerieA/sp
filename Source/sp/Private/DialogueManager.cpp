@@ -11,8 +11,22 @@ UDialogueManager::UDialogueManager()
 void UDialogueManager::BeginPlay()
 {
     Super::BeginPlay();
+
+    if (!DialogueJSONPath.IsEmpty())
+    {
+        bool bSuccess = LoadDialogueFromJSON(DialogueJSONPath);
+        if (!bSuccess && GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+                FString::Printf(TEXT("Failed to load dialogue JSON at: %s"), *DialogueJSONPath));
+        }
+    } else if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+            TEXT("DialogueJSONPath is not set!"));
+    }
     
-    LoadDialogueFromJSON("Dialogues/luka_session_01.json");
+    LoadDialogueFromJSON(DialogueJSONPath);
 }
 
 void UDialogueManager::StartDialogue(const FString& NodeID)
