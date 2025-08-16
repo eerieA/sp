@@ -62,6 +62,9 @@ public:
     void SelectChoice(int32 ChoiceIndex);
 
     UFUNCTION(BlueprintCallable, Category="Dialogue")
+    void AdvanceDialogue();
+
+    UFUNCTION(BlueprintCallable, Category="Dialogue")
     bool LoadDialogueFromJSON(const FString& RelativePath);
 
 protected:

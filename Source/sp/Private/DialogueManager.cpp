@@ -163,6 +163,35 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
     }
 }
 
+void UDialogueManager::AdvanceDialogue()
+{    
+    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
+    if (!Node)
+    {
+        if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("AdvanceDialogue: current node not found"));
+        return;
+    }
+
+    // If current node has no choices but has a NextNodeID, jump to it.
+    if (Node->Choices.Num() == 0)
+    {
+        if (!Node->NextNodeID.IsEmpty())
+        {
+            StartDialogue(Node->NextNodeID);
+            return;
+        }
+        else
+        {
+            // If no choice and no NextNodeID, we assume it is the end
+            if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("AdvanceDialogue: end of dialogue"));
+            return;
+        }
+    }
+
+    // If current node has choices, prompt player to choose
+    if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Yellow, TEXT("AdvanceDialogue: node has choices — press a number key"));
+}
+
 bool UDialogueManager::LoadDialogueFromJSON(const FString& RelativePath)
 {
     UDialogueDataLoader* Loader = NewObject<UDialogueDataLoader>(this);
