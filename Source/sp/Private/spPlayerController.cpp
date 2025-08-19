@@ -98,12 +98,6 @@ void AspPlayerController::HandleDialogueEnded()
 void AspPlayerController::HandleOnDialogueUpdated(const FString& Speaker, const FString& Line)
 {
 	UpdateDialogueUI();
-	/*if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))
-	{
-		DW->CurrentSpeaker = FText::FromString(Speaker);
-		DW->CurrentLine = FText::FromString(Line);
-		DW->OnDialogueUpdated_BP(); // we use this Blueprint event to rebuild visuals
-	}*/
 }
 
 void AspPlayerController::HandleOnChoicesUpdated(const TArray<FDialogueChoice>& Choices)
