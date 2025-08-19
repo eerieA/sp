@@ -17,11 +17,20 @@ class SP_API AspPlayerController : public APlayerController
 	
 public:
 	AspPlayerController();
-	
+
+	// Holds a DialogueManager instance
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Dialogue")
 	UDialogueManager* DialogueManager;
+	// Let it be able to receive a widget for dialogue UI
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<UUserWidget> DialogueWidgetClass;
+	UPROPERTY()
+	UUserWidget* DialogueWidgetInstance;
 
 	virtual void SetupInputComponent() override;
+
+	// Temp function to force starting dialogue
+	void TestStartDialogue();
 	
 	// Handlers for number keys (map numbers 1..9 to choice indices 0..8)
 	UFUNCTION()
@@ -47,6 +56,20 @@ public:
 	UFUNCTION()
 	void OnAdvance();
 
+	UFUNCTION()
+	void HandleDialogueEnded();
+
+	UFUNCTION()
+	void HandleOnDialogueUpdated(const FString& Speaker, const FString& Line);
+
+	UFUNCTION()
+	void HandleOnChoicesUpdated(const TArray<FDialogueChoice>& Choices);
+
 	// helper to reduce repetition
 	void SelectChoiceByIndex(int32 Index);
+
+	void UpdateDialogueUI();	
+
+protected:
+	virtual void BeginPlay() override;
 };

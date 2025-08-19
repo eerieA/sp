@@ -2,9 +2,13 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Engine/DataTable.h"
 #include "DialogueNode.h"   // All structs related to a dialogue node
 #include "DialogueManager.generated.h"
+
+// Delegate for UI updates
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDialogueUpdated, const FString&, Speaker, const FString&, Line);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChoicesUpdated, const TArray<FDialogueChoice>&, Choices);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDialogueEnded);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SP_API UDialogueManager : public UActorComponent
@@ -48,7 +52,11 @@ public:
     // Start dialogue at node
     UFUNCTION(BlueprintCallable, Category="Dialogue")
     void StartDialogue(const FString& NodeID);
-
+    
+    // Returns a pointer to the current node, or nullptr if not found
+    // No need for UFUNCTION decorator
+    const FDialogueNode* GetCurrentNode() const;
+    
     // Get display line (resolves alt + append)
     UFUNCTION(BlueprintCallable, Category="Dialogue")
     FString GetCurrentLine() const;
@@ -66,6 +74,15 @@ public:
 
     UFUNCTION(BlueprintCallable, Category="Dialogue")
     bool LoadDialogueFromJSON(const FString& RelativePath);
+
+    UPROPERTY(BlueprintAssignable, Category="Dialogue")
+    FOnDialogueUpdated OnDialogueUpdated;
+    
+    UPROPERTY(BlueprintAssignable, Category="Dialogue")
+    FOnDialogueEnded OnDialogueEnded;
+
+    UPROPERTY(BlueprintAssignable, Category="Dialogue")
+    FOnChoicesUpdated OnChoicesUpdated;
 
 protected:
     // Evaluate a full condition string. Supports "||" and "&&" (basic).

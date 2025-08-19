@@ -31,22 +31,28 @@ void UDialogueManager::BeginPlay()
 
 void UDialogueManager::StartDialogue(const FString& NodeID)
 {
+    UE_LOG(LogTemp, Warning, TEXT("DialogueManager: Entered StartDialogue()."));
     CurrentNodeID = NodeID;
+    UE_LOG(LogTemp, Warning, TEXT("DialogueManager: StartDialogue(), NodeID."));
 
     FString Line = GetCurrentLine();
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 6.f, FColor::Green, Line);
-    }
+    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
+    FString Speaker = Node ? Node->Speaker : TEXT("???");
+
+    OnDialogueUpdated.Broadcast(Speaker, Line);
 
     TArray<FDialogueChoice> Choices = GetAvailableChoices();
-    for (int32 i = 0; i < Choices.Num(); ++i)
+    OnChoicesUpdated.Broadcast(Choices);
+}
+
+const FDialogueNode* UDialogueManager::GetCurrentNode() const
+{
+    if (CurrentNodeID.IsEmpty())
     {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 6.f, FColor::Yellow, FString::Printf(TEXT("%d: %s"), i, *Choices[i].Text));
-        }
+        return nullptr;
     }
+
+    return DialogueNodeMap.Find(CurrentNodeID);
 }
 
 FString UDialogueManager::GetCurrentLine() const
@@ -142,6 +148,8 @@ TArray<FDialogueChoice> UDialogueManager::GetAvailableChoices() const
 
 void UDialogueManager::SelectChoice(int32 ChoiceIndex)
 {
+    UE_LOG(LogTemp, Warning, TEXT("DialogueManager::SelectChoice(%d)  CurrentNode=%s"), ChoiceIndex, *CurrentNodeID);
+
     TArray<FDialogueChoice> Choices = GetAvailableChoices();
     if (!Choices.IsValidIndex(ChoiceIndex)) return;
 
@@ -160,6 +168,7 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
     {
         // No next node - end of dialogue
         if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Cyan, TEXT("Dialogue end."));
+        OnDialogueEnded.Broadcast();
     }
 }
 
@@ -184,6 +193,7 @@ void UDialogueManager::AdvanceDialogue()
         {
             // If no choice and no NextNodeID, we assume it is the end
             if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("AdvanceDialogue: end of dialogue"));
+            OnDialogueEnded.Broadcast();
             return;
         }
     }

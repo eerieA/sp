@@ -28,7 +28,7 @@ Backup/
 
 # Ignore compiled assets, cooked content, editor collections or debug assets
 Content/Developers/
-*.uasset
+# *.uasset
 # *.umap
 
 # Ignore Android and per-user configs

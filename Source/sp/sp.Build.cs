@@ -11,7 +11,8 @@ public class sp : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore",
-			"Json", "JsonUtilities" 
+			"Json", "JsonUtilities",
+			"UMG"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

@@ -54,18 +54,34 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
         GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("NPCDialogueTrigger::OnOverlapBegin"));
     }
 
-    if (!OtherActor || OtherActor == this) return;
+    if (!OtherActor || OtherActor == this)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No OtherActor is found or OtherActor is the current actor."));
+        return;
+    }
 
     // Cast to pawn (player or AI). We want the controller that owns the pawn.
     APawn* Pawn = Cast<APawn>(OtherActor);
-    if (!Pawn) return;
+    if (!Pawn)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No Pawn is found or casted."));
+        return;
+    }
 
     AController* Controller = Pawn->GetController();
-    if (!Controller) return;
+    if (!Controller)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No Controller of Pawn is found."));
+        return;
+    }
 
     // PlayerController is expected, but this works generically.
     APlayerController* PC = Cast<APlayerController>(Controller);
-    if (!PC) return;
+    if (!PC)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No PlayerController is found or casted."));
+        return;
+    }
 
     // Find DialogueManager component on the controller
     UDialogueManager* DM = PC->FindComponentByClass<UDialogueManager>();
@@ -76,6 +92,7 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
         return;
     }
 
+    UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Starting dialogue."));
     // Start dialogue (use the node id defined in the json we want to use)
     DM->StartDialogue(StartingNodeID);
 }

@@ -3,8 +3,10 @@
 
 #include "spPlayerController.h"
 #include "DialogueManager.h"
+#include "DialogueWidget.h"
 #include "Engine/Engine.h"
 #include "InputCoreTypes.h" // for EKeys
+#include "Blueprint/UserWidget.h"
 
 AspPlayerController::AspPlayerController()
 {
@@ -18,6 +20,9 @@ void AspPlayerController::SetupInputComponent()
 
 	if (!InputComponent) return;
 
+	// Temp key binding for force starting dialogue
+	InputComponent->BindKey(EKeys::D, IE_Pressed, this, &AspPlayerController::TestStartDialogue);
+	
 	// Bind number keys (1..9)
 	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &AspPlayerController::OnChoice0);
 	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AspPlayerController::OnChoice1);
@@ -31,6 +36,32 @@ void AspPlayerController::SetupInputComponent()
 
 	// Bind space to advance (or continue auto-next)
 	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AspPlayerController::OnAdvance);
+}
+
+// Temp function to force starting dialogue
+void AspPlayerController::TestStartDialogue()
+{
+	UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Starting TestStartDialogue()."));
+	if (DialogueManager)
+	{
+		// Switch input mode to UI + Game
+		FInputModeGameAndUI InputMode;
+		InputMode.SetWidgetToFocus(DialogueWidgetInstance->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+		
+		DialogueManager->StartDialogue(TEXT("start"));
+		UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Called DialogueManager->StartDialogue()."));
+
+		if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Got a UDialogueWidget."));
+			
+			DW->ShowWidget(true);
+			DW->UpdateDialogue(DialogueManager->GetCurrentLine(), DialogueManager->GetAvailableChoices());
+		}
+	}
 }
 
 void AspPlayerController::OnChoice0() { SelectChoiceByIndex(0); }
@@ -51,6 +82,39 @@ void AspPlayerController::OnAdvance()
 	}
 }
 
+void AspPlayerController::HandleDialogueEnded()
+{
+	if (DialogueWidgetInstance)
+	{
+		DialogueWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+		
+		// Return control back to game
+		FInputModeGameOnly InputMode;
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+
+void AspPlayerController::HandleOnDialogueUpdated(const FString& Speaker, const FString& Line)
+{
+	UpdateDialogueUI();
+	/*if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))
+	{
+		DW->CurrentSpeaker = FText::FromString(Speaker);
+		DW->CurrentLine = FText::FromString(Line);
+		DW->OnDialogueUpdated_BP(); // we use this Blueprint event to rebuild visuals
+	}*/
+}
+
+void AspPlayerController::HandleOnChoicesUpdated(const TArray<FDialogueChoice>& Choices)
+{
+	// Rebuild the choice buttons
+	if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))
+	{
+		DW->UpdateDialogue(DW->CurrentLine.ToString(), Choices);
+	}
+}
+
 void AspPlayerController::SelectChoiceByIndex(int32 Index)
 {
 	if (UDialogueManager* DM = FindComponentByClass<UDialogueManager>())
@@ -66,4 +130,49 @@ void AspPlayerController::SelectChoiceByIndex(int32 Index)
 		if (GEngine)
 			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, TEXT("No DialogueManager component found on PlayerController"));
 	}
+}
+
+void AspPlayerController::UpdateDialogueUI()
+{
+	if (!DialogueWidgetInstance || !DialogueManager) return;
+
+	UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance);
+	if (!DW) return;
+
+	// Example data pull
+	const FDialogueNode* CurrentNode = DialogueManager->GetCurrentNode();
+	if (!CurrentNode)
+	{
+		DW->ShowWidget(false);
+		return;
+	}
+
+	// Pass speaker + text + choices to widget
+	DW->ShowWidget(true);
+	DW->CurrentSpeaker = FText::FromString(CurrentNode->Speaker);
+	DW->UpdateDialogue(CurrentNode->BaseLine, CurrentNode->Choices);
+}
+
+void AspPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (DialogueWidgetClass)
+	{
+		DialogueWidgetInstance = CreateWidget<UUserWidget>(this, DialogueWidgetClass);
+		if (DialogueWidgetInstance)
+		{
+			DialogueWidgetInstance->AddToViewport();
+			DialogueWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+		}		
+	}
+
+	if (DialogueManager)
+	{
+		// Bind a delegate to handle necessary processes after a dialogue ends
+		DialogueManager->OnDialogueEnded.AddDynamic(this, &AspPlayerController::HandleDialogueEnded);
+		// Bind update delegates so UI refreshes automatically
+		DialogueManager->OnDialogueUpdated.AddDynamic(this, &AspPlayerController::HandleOnDialogueUpdated);
+		DialogueManager->OnChoicesUpdated.AddDynamic(this, &AspPlayerController::HandleOnChoicesUpdated);
+    }
 }
