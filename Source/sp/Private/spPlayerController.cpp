@@ -20,9 +20,6 @@ void AspPlayerController::SetupInputComponent()
 
 	if (!InputComponent) return;
 
-	// Temp key binding for force starting dialogue
-	InputComponent->BindKey(EKeys::Q, IE_Pressed, this, &AspPlayerController::TestStartDialogue);
-	
 	// Bind number keys (1..9)
 	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &AspPlayerController::OnChoice0);
 	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AspPlayerController::OnChoice1);
@@ -36,32 +33,6 @@ void AspPlayerController::SetupInputComponent()
 
 	// Bind space to advance (or continue auto-next)
 	InputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &AspPlayerController::OnAdvance);
-}
-
-// Temp function to force starting dialogue
-void AspPlayerController::TestStartDialogue()
-{
-	UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Starting TestStartDialogue()."));
-	if (DialogueManager)
-	{
-		// Switch input mode to UI + Game
-		FInputModeGameAndUI InputMode;
-		InputMode.SetWidgetToFocus(DialogueWidgetInstance->TakeWidget());
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		SetInputMode(InputMode);
-		bShowMouseCursor = true;
-		
-		DialogueManager->StartDialogue(TEXT("start"), DialogueManager->DialogueNodeMap);
-		UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Called DialogueManager->StartDialogue()."));
-
-		if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))
-		{
-			UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Got a UDialogueWidget."));
-			
-			DW->ShowWidget(true);
-			DW->UpdateDialogue(DialogueManager->GetCurrentLine(), DialogueManager->GetAvailableChoices());
-		}
-	}
 }
 
 void AspPlayerController::OnChoice0() { SelectChoiceByIndex(0); }

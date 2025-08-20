@@ -28,9 +28,6 @@ public:
 	UUserWidget* DialogueWidgetInstance;
 
 	virtual void SetupInputComponent() override;
-
-	// Temp function to force starting dialogue
-	void TestStartDialogue();
 	
 	// Handlers for number keys (map numbers 1..9 to choice indices 0..8)
 	UFUNCTION()
