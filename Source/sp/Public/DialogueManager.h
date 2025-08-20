@@ -51,7 +51,7 @@ public:
 
     // Start dialogue at node
     UFUNCTION(BlueprintCallable, Category="Dialogue")
-    void StartDialogue(const FString& NodeID);
+    void StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>& DialogueNodeMapReplace);
     
     // Returns a pointer to the current node, or nullptr if not found
     // No need for UFUNCTION decorator

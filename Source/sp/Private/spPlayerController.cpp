@@ -21,7 +21,7 @@ void AspPlayerController::SetupInputComponent()
 	if (!InputComponent) return;
 
 	// Temp key binding for force starting dialogue
-	InputComponent->BindKey(EKeys::D, IE_Pressed, this, &AspPlayerController::TestStartDialogue);
+	InputComponent->BindKey(EKeys::Q, IE_Pressed, this, &AspPlayerController::TestStartDialogue);
 	
 	// Bind number keys (1..9)
 	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &AspPlayerController::OnChoice0);
@@ -51,7 +51,7 @@ void AspPlayerController::TestStartDialogue()
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 		
-		DialogueManager->StartDialogue(TEXT("start"));
+		DialogueManager->StartDialogue(TEXT("start"), DialogueManager->DialogueNodeMap);
 		UE_LOG(LogTemp, Warning, TEXT("spPlayerController: Called DialogueManager->StartDialogue()."));
 
 		if (UDialogueWidget* DW = Cast<UDialogueWidget>(DialogueWidgetInstance))

@@ -1,6 +1,8 @@
 #include "NPCDialogueTrigger.h"
 
 #include "DialogueManager.h"
+#include "spPlayerController.h"
+#include "Blueprint/UserWidget.h"
 #include "Components/BillboardComponent.h"
 #include "Components/BoxComponent.h"
 #include "Engine/Engine.h"
@@ -36,6 +38,15 @@ void ANPCDialogueTrigger::BeginPlay()
     {
         TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ANPCDialogueTrigger::OnOverlapBegin);
     }
+
+    // Load this NPC's dialogue JSON once at startup
+    if (!DialogueFilePath.IsEmpty())
+    {
+        UDialogueDataLoader* Loader = NewObject<UDialogueDataLoader>(this);
+        if (!Loader) return;
+        
+        Loader->LoadDialogueFromFile(DialogueFilePath, DialogueData);
+    }
 }
 
 // Called every frame
@@ -44,9 +55,10 @@ void ANPCDialogueTrigger::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
 }
 
-void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-                                         bool bFromSweep, const FHitResult & SweepResult)
+void ANPCDialogueTrigger::OnOverlapBegin(
+    UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+    bool bFromSweep, const FHitResult& SweepResult)
 {
     // Quick visual debug so we know the function fired
     if (GEngine)
@@ -60,23 +72,16 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
         return;
     }
 
-    // Cast to pawn (player or AI). We want the controller that owns the pawn.
-    APawn* Pawn = Cast<APawn>(OtherActor);
-    if (!Pawn)
+    // Only continue if it is player character overlapping it
+    ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
+    if (!PlayerChar)
     {
-        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No Pawn is found or casted."));
-        return;
-    }
-
-    AController* Controller = Pawn->GetController();
-    if (!Controller)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No Controller of Pawn is found."));
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: The OtherActor is not a player actor."));
         return;
     }
 
     // PlayerController is expected, but this works generically.
-    APlayerController* PC = Cast<APlayerController>(Controller);
+    APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
     if (!PC)
     {
         UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: No PlayerController is found or casted."));
@@ -87,12 +92,32 @@ void ANPCDialogueTrigger::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AA
     UDialogueManager* DM = PC->FindComponentByClass<UDialogueManager>();
     if (!DM)
     {
-        // helpful log if DialogueManager wasn't found
         UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: DialogueManager not found on PlayerController"));
         return;
     }
 
+    if (DialogueData.Num() <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: DialogueData is somehow empty, cannot start dialogue."));
+        return;
+    }
+
+    // Preparation: change UI mode
+    AspPlayerController* spPC = Cast<AspPlayerController>(PC);
+    if (spPC && spPC->DialogueWidgetInstance)
+    {
+        // Show mouse cursor
+        PC->bShowMouseCursor = true;
+
+        // Use Game+UI mode so InputComponent bindings (Space, etc.) still fire
+        FInputModeGameAndUI InputMode;
+        InputMode.SetWidgetToFocus(spPC->DialogueWidgetInstance->TakeWidget());
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+        PC->SetInputMode(InputMode);
+    }
+    
     UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Starting dialogue."));
     // Start dialogue (use the node id defined in the json we want to use)
-    DM->StartDialogue(StartingNodeID);
+    DM->StartDialogue(StartingNodeID, DialogueData);
 }

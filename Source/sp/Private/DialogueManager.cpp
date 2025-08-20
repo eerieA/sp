@@ -29,11 +29,13 @@ void UDialogueManager::BeginPlay()
     LoadDialogueFromJSON(DialogueJSONPath);
 }
 
-void UDialogueManager::StartDialogue(const FString& NodeID)
+void UDialogueManager::StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>& DialogueNodeMapReplace)
 {
-    UE_LOG(LogTemp, Warning, TEXT("DialogueManager: Entered StartDialogue()."));
     CurrentNodeID = NodeID;
     UE_LOG(LogTemp, Warning, TEXT("DialogueManager: StartDialogue(), NodeID."));
+
+    // Replace self's dialogue map with the incoming one, usually an NPC's
+    DialogueNodeMap = DialogueNodeMapReplace;
 
     FString Line = GetCurrentLine();
     const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
@@ -162,7 +164,7 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
     if (!Choice.NextNodeID.IsEmpty())
     {
         CurrentNodeID = Choice.NextNodeID;
-        StartDialogue(CurrentNodeID);
+        StartDialogue(CurrentNodeID, DialogueNodeMap);
     }
     else
     {
@@ -186,7 +188,7 @@ void UDialogueManager::AdvanceDialogue()
     {
         if (!Node->NextNodeID.IsEmpty())
         {
-            StartDialogue(Node->NextNodeID);
+            StartDialogue(Node->NextNodeID, DialogueNodeMap);
             return;
         }
         else

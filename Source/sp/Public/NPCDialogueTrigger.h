@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Actor.h"
+#include "DialogueDataLoader.h"
 #include "NPCDialogueTrigger.generated.h"
 
 UCLASS()
@@ -28,10 +29,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Trigger")
 	UBoxComponent* TriggerBox;
 
-	// Dialogue node ID to start with when player overlaps
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dialogue")
-	FString StartingNodeID = TEXT("start");  // default value
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	FString DialogueFilePath;  // e.g. "Data/Dialogue/NPC_Bob.json"
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dialogue")
+	FString StartingNodeID;    // the node ID in that JSON to begin
+
+	UPROPERTY()
+	TMap<FString, FDialogueNode> DialogueData;
+	
 	// Overlap logic functions
 	UFUNCTION()
 	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
