@@ -22,9 +22,11 @@ protected:
     virtual void BeginPlay() override;
 
 public:
-    // Holds all loaded nodes by ID in memory
-    UPROPERTY(BlueprintReadOnly, Category="Dialogue")
-    TMap<FString, FDialogueNode> DialogueNodeMap;
+    // Holds nodes loaded by itself through its load json function
+    TMap<FString, FDialogueNode> OwnDialogueMap;
+
+    // A pointer to a dialogue map that will be loaded elsewhere, like an NPC
+    const TMap<FString, FDialogueNode>* ActiveDialogueMap = nullptr;
 
     // Current node id
     UPROPERTY(BlueprintReadOnly, Category="Dialogue")
@@ -49,9 +51,11 @@ public:
     UPROPERTY(BlueprintReadWrite, Category="Dialogue")
     TMap<FString,bool> Flags;
 
-    // Start dialogue at node
-    UFUNCTION(BlueprintCallable, Category="Dialogue")
-    void StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>& DialogueNodeMapReplace);
+    // Start dialogue at node, with optional external dialogue map pointer
+    // Does not need to be blueprint callable so no UFUNCTION deco
+    void StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>* InDialogueMap = nullptr);
+
+    void SetActiveDialogueMap(const TMap<FString, FDialogueNode>* InDialogueMap);
     
     // Returns a pointer to the current node, or nullptr if not found
     // No need for UFUNCTION decorator

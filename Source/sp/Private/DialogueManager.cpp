@@ -19,27 +19,38 @@ void UDialogueManager::BeginPlay()
         {
             GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
                 FString::Printf(TEXT("Failed to load dialogue JSON at: %s"), *DialogueJSONPath));
+        } else
+        {
+            // Set as own dialogue map for a start
+            ActiveDialogueMap = &OwnDialogueMap;
         }
-    } else if (GEngine)
+    } else
     {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow,
             TEXT("DialogueJSONPath is not set!"));
+        }
     }
-    
-    LoadDialogueFromJSON(DialogueJSONPath);
 }
 
-void UDialogueManager::StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>& DialogueNodeMapReplace)
+void UDialogueManager::StartDialogue(const FString& NodeID, const TMap<FString, FDialogueNode>* InDialogueMap)
 {
+    // Replace self's dialogue map with the incoming one, usually an NPC's
+    if (InDialogueMap)
+    {
+        ActiveDialogueMap = InDialogueMap;
+    } else if (!ActiveDialogueMap)
+    {
+        ActiveDialogueMap = &OwnDialogueMap;
+    }
+    
     CurrentNodeID = NodeID;
     UE_LOG(LogTemp, Warning, TEXT("DialogueManager: StartDialogue(), NodeID."));
 
-    // Replace self's dialogue map with the incoming one, usually an NPC's
-    DialogueNodeMap = DialogueNodeMapReplace;
-
-    FString Line = GetCurrentLine();
-    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
+    const FDialogueNode* Node = GetCurrentNode();   // This reads from active dialogue map
     FString Speaker = Node ? Node->Speaker : TEXT("???");
+    FString Line = GetCurrentLine();
 
     OnDialogueUpdated.Broadcast(Speaker, Line);
 
@@ -47,19 +58,30 @@ void UDialogueManager::StartDialogue(const FString& NodeID, const TMap<FString, 
     OnChoicesUpdated.Broadcast(Choices);
 }
 
+void UDialogueManager::SetActiveDialogueMap(const TMap<FString, FDialogueNode>* InDialogueMap)
+{
+    if (InDialogueMap)
+        ActiveDialogueMap = InDialogueMap;
+    else
+        ActiveDialogueMap = &OwnDialogueMap; // fallback
+}
+
 const FDialogueNode* UDialogueManager::GetCurrentNode() const
 {
     if (CurrentNodeID.IsEmpty())
     {
+        UE_LOG(LogTemp, Warning, TEXT("GetCurrentNode() was called but CurrentNodeID is empty."));
         return nullptr;
     }
+    if (!ActiveDialogueMap) return nullptr;
 
-    return DialogueNodeMap.Find(CurrentNodeID);
+    const FDialogueNode* Node = ActiveDialogueMap->Find(CurrentNodeID);
+    return Node;
 }
 
 FString UDialogueManager::GetCurrentLine() const
 {
-    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);    
+    const FDialogueNode* Node = GetCurrentNode();    
     if (!Node)
         return FString("Node not found!");
 
@@ -110,7 +132,7 @@ TArray<FDialogueChoice> UDialogueManager::GetAvailableChoices() const
 {
     TArray<FDialogueChoice> Result;
 
-    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
+    const FDialogueNode* Node = GetCurrentNode();
     if (!Node) return Result;
 
     for (const FDialogueChoice& Choice : Node->Choices)
@@ -164,7 +186,7 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
     if (!Choice.NextNodeID.IsEmpty())
     {
         CurrentNodeID = Choice.NextNodeID;
-        StartDialogue(CurrentNodeID, DialogueNodeMap);
+        StartDialogue(CurrentNodeID);
     }
     else
     {
@@ -176,7 +198,7 @@ void UDialogueManager::SelectChoice(int32 ChoiceIndex)
 
 void UDialogueManager::AdvanceDialogue()
 {    
-    const FDialogueNode* Node = DialogueNodeMap.Find(CurrentNodeID);
+    const FDialogueNode* Node = GetCurrentNode();
     if (!Node)
     {
         if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("AdvanceDialogue: current node not found"));
@@ -188,7 +210,7 @@ void UDialogueManager::AdvanceDialogue()
     {
         if (!Node->NextNodeID.IsEmpty())
         {
-            StartDialogue(Node->NextNodeID, DialogueNodeMap);
+            StartDialogue(Node->NextNodeID);
             return;
         }
         else
@@ -206,10 +228,15 @@ void UDialogueManager::AdvanceDialogue()
 
 bool UDialogueManager::LoadDialogueFromJSON(const FString& RelativePath)
 {
+    TMap<FString, FDialogueNode> Temp;
     UDialogueDataLoader* Loader = NewObject<UDialogueDataLoader>(this);
     if (!Loader) return false;
 
-    return Loader->LoadDialogueFromFile(RelativePath, DialogueNodeMap);
+    const bool bOK = Loader->LoadDialogueFromFile(RelativePath, Temp);
+    if (!bOK) return false;
+
+    OwnDialogueMap = MoveTemp(Temp);
+    return true;
 }
 
 bool UDialogueManager::EvaluateConditionString(const FString& Condition) const

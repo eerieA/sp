@@ -119,5 +119,5 @@ void ANPCDialogueTrigger::OnOverlapBegin(
     
     UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Starting dialogue."));
     // Start dialogue (use the node id defined in the json we want to use)
-    DM->StartDialogue(StartingNodeID, DialogueData);
+    DM->StartDialogue(StartingNodeID, &DialogueData);
 }
