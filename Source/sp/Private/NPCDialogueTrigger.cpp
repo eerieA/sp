@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Engine/Engine.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -102,7 +103,12 @@ void ANPCDialogueTrigger::OnOverlapBegin(
         return;
     }
 
-    // Preparation: change UI mode
+    // Preparation 1: disable player movement
+    if (PlayerChar && PlayerChar->GetCharacterMovement())
+    {
+        PlayerChar->GetCharacterMovement()->DisableMovement();
+    }
+    // Preparation 2: change UI mode
     AspPlayerController* spPC = Cast<AspPlayerController>(PC);
     if (spPC && spPC->DialogueWidgetInstance)
     {
@@ -116,8 +122,35 @@ void ANPCDialogueTrigger::OnOverlapBegin(
 
         PC->SetInputMode(InputMode);
     }
+    // Preparation 3: bind dialogue end handler to DM's dialogue end event
+    DM->OnDialogueEnded.AddDynamic(this, &ANPCDialogueTrigger::HandleDialogueEnded);
     
     UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Starting dialogue."));
     // Start dialogue (use the node id defined in the json we want to use)
     DM->StartDialogue(StartingNodeID, &DialogueData);
+}
+
+void ANPCDialogueTrigger::HandleDialogueEnded()
+{    
+    UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Entered HandleDialogueEnded()."));
+
+    // Unbind immediately so handler won't be called again by stale DM
+    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+    if (PC)
+    {
+        if (UDialogueManager* DM = PC->FindComponentByClass<UDialogueManager>())
+        {
+            DM->OnDialogueEnded.RemoveDynamic(this, &ANPCDialogueTrigger::HandleDialogueEnded);
+            UE_LOG(LogTemp, Warning, TEXT("NPCDialogueTrigger: Unbound HandleDialogueEnded from DM %p"), DM);
+        }
+    }    
+    
+    // Restore movement
+    ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(this, 0);
+    if (PlayerChar && PlayerChar->GetCharacterMovement())
+    {
+        PlayerChar->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+    }
+
+    // UI mode resume will be done in spPlayerController
 }

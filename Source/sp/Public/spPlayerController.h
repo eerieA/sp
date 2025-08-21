@@ -65,7 +65,7 @@ public:
 	// helper to reduce repetition
 	void SelectChoiceByIndex(int32 Index);
 
-	void UpdateDialogueUI();	
+	void UpdateDialogueUI();
 
 protected:
 	virtual void BeginPlay() override;

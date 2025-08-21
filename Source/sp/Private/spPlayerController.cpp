@@ -60,8 +60,7 @@ void AspPlayerController::HandleDialogueEnded()
 		DialogueWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
 		
 		// Return control back to game
-		FInputModeGameOnly InputMode;
-		SetInputMode(InputMode);
+		SetInputMode(FInputModeGameOnly());
 		bShowMouseCursor = false;
 	}
 }

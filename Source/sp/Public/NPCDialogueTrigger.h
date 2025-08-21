@@ -44,4 +44,8 @@ public:
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 		bool bFromSweep, const FHitResult& SweepResult);
 
+	// If this handler is not marked UFUNCTION(), AddDynamic will compile
+	// but the dynamic call won’t work properly
+	UFUNCTION()
+	void HandleDialogueEnded();
 };
