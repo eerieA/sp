@@ -60,6 +60,7 @@ void UDialogueTriggerComponent::OnOverlapBegin(
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
+    // Quick visual debug so we know the function fired
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("DialogueTriggerComponent::OnOverlapBegin"));
@@ -67,13 +68,14 @@ void UDialogueTriggerComponent::OnOverlapBegin(
 
 	if (!OtherActor || OtherActor == GetOwner()) return;
 
-	// Only allow player character
+	// Only trigger the following logic if it is player character overlapping it
 	ACharacter* PlayerChar = Cast<ACharacter>(OtherActor);
 	if (!PlayerChar) return;
 
 	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
 	if (!PC) return;
 
+	// Find DialogueManager component on the player controller
 	UDialogueManager* DM = PC->FindComponentByClass<UDialogueManager>();
 	if (!DM)
 	{
@@ -87,13 +89,13 @@ void UDialogueTriggerComponent::OnOverlapBegin(
 		return;
 	}
 
-	// Disable player movement
+	// Preparation 1: disable player movement
 	if (PlayerChar->GetCharacterMovement())
 	{
 		PlayerChar->GetCharacterMovement()->DisableMovement();
 	}
 
-	// Switch input mode if using AspPlayerController and the widget instance
+	// Preparation 2: Switch input mode if using AspPlayerController and the widget instance
 	if (AspPlayerController* spPC = Cast<AspPlayerController>(PC))
 	{
 		if (spPC->DialogueWidgetInstance)
@@ -106,10 +108,11 @@ void UDialogueTriggerComponent::OnOverlapBegin(
 		}
 	}
 
-	// Bind to DM end event
+	// Preparation 3: bind dialogue end handler to DM's dialogue end event
 	DM->OnDialogueEnded.AddDynamic(this, &UDialogueTriggerComponent::HandleDialogueEnded);
 
 	UE_LOG(LogTemp, Log, TEXT("DialogueTriggerComponent: Starting dialogue."));
+    // Start dialogue (use the node id defined in the json we want to use)
 	DM->StartDialogue(StartingNodeID, &DialogueData);
 }
 
@@ -136,6 +139,7 @@ void UDialogueTriggerComponent::HandleDialogueEnded()
 			PlayerChar->GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 		}
 	}
+    // UI mode resume will be done in spPlayerController
 }
 
 void UDialogueTriggerComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
