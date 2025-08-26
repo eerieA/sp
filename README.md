@@ -16,6 +16,8 @@ This project is a modular dialogue trigger system for NPCs, made for the larger 
 
 It allows NPCs to optionally carry dialogue data and trigger conversations when the player overlaps with a collision box. The system is built with both C++ classes and blueprints.
 
+Unreal 5.3.2 was used while developing this.
+
 ## Features
 
 - A DialogueManager to handle dialogue branches and dialogue line progressions.
