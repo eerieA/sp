@@ -1,5 +1,17 @@
 # Minimal Dialogue System for project SP
 
+<!-- TOC -->
+
+- [Minimal Dialogue System for project SP](#minimal-dialogue-system-for-project-sp)
+    - [Features](#features)
+    - [Usage](#usage)
+    - [Project Structure & Class Relationships](#project-structure--class-relationships)
+        - [Core Classes](#core-classes)
+        - [Rough Relations of Classes When Used](#rough-relations-of-classes-when-used)
+    - [Placeholder Assets](#placeholder-assets)
+
+<!-- /TOC -->
+
 This project is a modular dialogue trigger system for NPCs, made for the larger game project SP.
 
 It allows NPCs to optionally carry dialogue data and trigger conversations when the player overlaps with a collision box. The system is built with both C++ classes and blueprints.
@@ -55,3 +67,7 @@ ANPCBase
  └── UDialogueTriggerComponent
         └── UBoxComponent (TriggerBox)
 ```
+
+## Placeholder Assets
+
+The placeholder character used is from [this sketchfab model](https://sketchfab.com/3d-models/character-4-123a5f0aa99a4e6aa87bb2c487455b83), made by iansilvadaher.
