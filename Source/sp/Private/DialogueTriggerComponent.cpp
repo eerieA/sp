@@ -11,7 +11,13 @@
 UDialogueTriggerComponent::UDialogueTriggerComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	TriggerBox = nullptr;
+	
+	TriggerBox = CreateDefaultSubobject<UBoxComponent>(TEXT("DialogueTriggerBox"));
+	TriggerBox->SetupAttachment(this);  // become a child to *this*
+	TriggerBox->SetBoxExtent(FVector(100.f, 70.f, 100.f));
+	TriggerBox->SetMobility(EComponentMobility::Movable);
+	TriggerBox->SetCollisionProfileName(TEXT("Trigger"));
+	TriggerBox->SetGenerateOverlapEvents(true);
 }
 
 void UDialogueTriggerComponent::BeginPlay()
@@ -25,26 +31,18 @@ void UDialogueTriggerComponent::BeginPlay()
 		return;
 	}
 
-	// Create BoxComponent at runtime and attach to owner's root
-	if (!TriggerBox)
-	{
-		TriggerBox = NewObject<UBoxComponent>(Owner, TEXT("DialogueTriggerBox"));
-		if (TriggerBox)
-		{
-			TriggerBox->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-			TriggerBox->SetBoxExtent(FVector(100.f, 100.f, 100.f));
-			TriggerBox->SetCollisionProfileName(TEXT("Trigger"));
-			TriggerBox->SetGenerateOverlapEvents(true);
-			TriggerBox->RegisterComponent(); // registers with the world
-		}
-	}
-
+	// TriggerBox BoxComponent should be already created, not bind it to the event
 	if (TriggerBox)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("DialogueTriggerComponent: TriggerBox exists!"));
 		TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &UDialogueTriggerComponent::OnOverlapBegin);
 	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("DialogueTriggerComponent: TriggerBox is null!"));
+	}
 
-	// Load dialogue data (same loader you used)
+	// Load dialogue data (using the loader class)
 	if (!DialogueFilePath.IsEmpty())
 	{
 		UDialogueDataLoader* Loader = NewObject<UDialogueDataLoader>(this);
@@ -65,6 +63,8 @@ void UDialogueTriggerComponent::OnOverlapBegin(
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("DialogueTriggerComponent::OnOverlapBegin"));
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("Overlap fired by: %s"), *OverlappedComp->GetName());
 
 	if (!OtherActor || OtherActor == GetOwner()) return;
 
