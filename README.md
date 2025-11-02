@@ -26,7 +26,11 @@ Unreal 5.3.2 was used while developing this.
 - Collision-based dialogue activation using a configurable UBoxComponent.
 - Dialogue data loading from external files via UDialogueDataLoader.
 
-Preview image: ![./preview.jpg](./preview.jpg)
+Demo video hosted on Youtube (~2 min):
+
+<a href="https://youtu.be/yQ0b-CCx0Xs">
+  <img src="./preview.jpg" alt="Watch the demo" width="480">
+</a>
 
 ## Usage
 
